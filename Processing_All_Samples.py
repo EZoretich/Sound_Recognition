@@ -9,17 +9,20 @@ import seaborn as sns
 import pandas as pd
 from glob import glob
 import itertools
-#from itertools import cycle
 
-#from pydub import AudioSegment
-#from pydub.playback import play
 import joblib
 from sklearn import datasets
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 import csv
-from sklearn.model_selection import train_test_split
+
+#from sklearn.model_selection import train_test_split
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
+from sklearn.neural_network import MLPClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 
 # ----------------------------- FUNCTIONS
@@ -46,141 +49,90 @@ def spectrogram(note):
 audio_files = glob('C:/Users/elena/Desktop/University Stuff/3rd Year/Final Major Project/Code/Keys_Recording/*.wav')
 
 raw_audios = []
-fourier_Db = []
-min_freq = 1000
-max_freq = 3000
+ml_audio_data = []
 
 for sample in audio_files:
     raw, sr = librosa.load(sample)
-    raw = raw[7000:48951] # Give all samples same length
+    #raw = raw[7000:48951] # Give all samples same length
     raw_audios.append(raw)
     #plot_wave(raw) # Plot waveform graph
     #spectrogram(raw) # Plot Spectrogram
 
-
-#print(len(raw_audios))
-
 for uncompressed in raw_audios:
-    # Fouries Transform and Convertion to Db
-    
     fourier_trans = librosa.stft(uncompressed) # Short-time Fourier transform
-    ft_Db = librosa.amplitude_to_db(np.abs(fourier_trans), ref = np.max)
-    
-    # Rolloff -- It is possible to plot both highest and lowest percentage of rolloff
-    # In the spectrogram. Although they appear all the same
-    '''rolloff = librosa.feature.spectral_rolloff(y = raw, sr = sr) # default 0.85%
-    print(rolloff)
-    #print(rolloff.shape)
-    fig, ax = plt.subplots()
-    sh = librosa.display.specshow(librosa.amplitude_to_db(fourier_trans, ref=np.max),
-                             y_axis='log', x_axis='time', ax=ax)
-    ax.plot(librosa.times_like(rolloff), rolloff[0], label='Roll-off frequency (0.85)')
-    ax.legend(loc='lower right')
-    ax.set(title='log Power spectrogram')
-    #fig.colorbar(sh, ax=ax, format=f'%0.2f')
-    plt.show()'''
+    ft_avg = np.mean(np.abs(fourier_trans), axis = 1)
+    ml_audio_data.append(ft_avg)
 
-    # fft_frequencies & amplitude
-    
-    st_ft = librosa.stft(uncompressed, n_fft = 2048)
-    frequencies = librosa.fft_frequencies(sr = sr, n_fft = 2048)
-    #ft_Db = librosa.amplitude_to_db(np.abs(st_ft), ref = np.max)
-    freq = librosa.fft_frequencies(sr = sr, n_fft = 4096)
-    min_freq_ind = (np.abs(freq - min_freq)).argmin()
-    max_freq_ind = (np.abs(freq - max_freq)).argmin()
-    amplitudes = np.abs(st_ft[min_freq_ind:max_freq_ind, :])
+ml_audio_data = np.array(ml_audio_data)
 
-    #plot_wave(amplitudes)
-    plt.plot(frequencies, librosa.amplitude_to_db(np.abs(st_ft), ref = np.max))#np.abs(st_ft))
-    #plt.plot(frequencies, np.abs(st_ft))
-    plt.xlabel('Frequency (Hz)')
-    plt.ylabel('Magnitude')
-    #plt.xlim(0,3000)
-    plt.show()
 
-    
-#print(frequencies)
-#print(type(frequencies))
-#print(frequencies.shape)
-
-# Just tests for my own clarity
-
-#print("---------- FREQ ----------")
-#print(freq)
-#print("---------- MIN FREQ ----------")
-#print(min_freq_ind)
-#print("---------- MAX FREQ ----------")
-#print(max_freq_ind)
-#print("---------- AMPLITUDES ----------")
-#print(amplitudes.shape)
-#print(amplitudes)
-
-'''
-print(type(fourier_trans)) #np.array # Just Testing and Checking
-print(fourier_trans[0]) 
-print(fourier_trans.shape) # (1025, 82)
-print(len(fourier_Db)) # 80
-'''
-'''
-print(type(ft_Db)) # np.array
-print(ft_Db)
-print(ft_Db.shape) #(1025, 82)
-print(len(ft_Db)) #1025
-'''
-
-# ---------------------------------------------- TRAINING MACHINE LEARNING MODEL
+#-------------------------------------------- TRAINING MACHINE LEARNING MODEL
 # made a list containing each xylophoen key
 # with a for loop, I am populating the list with 10 of each key label
 #ml_audio_data = []
-'''xylophone_keys = ["A", "B", "C_First_Inv", "C_Root", "D", "E", "F", "G"]
+xylophone_keys = ["A", "B", "C_First_Inv", "C_Root", "D", "E", "F", "G"]
 keys_labels = []
 for element in xylophone_keys:
     for x in range(10):
         keys_labels.append(element)
-        
-#print(keys_labels)
-#print(len(keys_labels))
-#print(type(fourier_Db))
-#print(type(fourier_Db[1]))
-ml_audio_data = fourier_Db
-ml_audio_data = np.array(ml_audio_data)
-#ml_audio_data.flatten()
-print(ml_audio_data.shape) #Block size, row size and column size --> (80, 1025, 82)
-#print(ml_audio_data[0])
-print(ml_audio_data)
-#print(len(ml_audio_data))
-#ml_audio_data = np.array(ml_audio_data)
 
 # ----------------------------------------------------------
-
 
 X = ml_audio_data
 y = keys_labels
 
-model = RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1)
-#model = GaussianProcessClassifier(1.0 * RBF(1.0)),
-# 12.5% --> 10 / 80
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.125, shuffle=True)
+
+#model = MLPClassifier(alpha=1, max_iter=1000)
+#print(" NEURAL NETWORK - MLP")
+
+#model = SVC(kernel="linear", C=0.025) # extremely good
+#print(" LINEAR SVM")
+
+#model = GaussianNB()
+#print("---------- NAIVE BAYES ----------")
+
+model = KNeighborsClassifier(3) # Best one so far --> from 56-85%
+#print(" K NEAREST NEIGHBORS")
+
+#model = RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1)
+#print(" RANDOM FOREST")
+
+#model = GaussianProcessClassifier(1.0 * RBF(1.0))
+#print(" GAUSSIAN PROCESS")
+
+# make your own test/train, so ML model trains better.
+# because you do not kwow.
+# Bar chart to see accuracy of data and their position.
+
+# Split train/test dataset to include every note in testing
+
+X_train = np.concatenate((X[1:11,:], X[12:21,:], X[22:31,:], X[32:41,:], X[42:51,:], X[52:61,:], X[62:71,:], X[72:,:]))
+X_test = np.concatenate((X[:1,:], X[11:12,:], X[21:22,:], X[31:32,:], X[41:42,:], X[51:52,:], X[61:62,:], X[71:72,:]))
+y_train = np.concatenate((y[1:11], y[12:21], y[22:31], y[32:41], y[42:51], y[52:61], y[62:71], y[72:]))
+y_test = np.concatenate((y[:1], y[11:12], y[21:22], y[31:32], y[41:42], y[51:52], y[61:62], y[71:72]))
+
+
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.8, shuffle=True)
 
 # The train_test_split parameter 'shuffle = True' will allow to randomly select the cards (features)
 # used for training and testing, providing a non-bias model
 model.fit(X_train, y_train)
 y_predict = model.predict(X_test)
 score = model.score(X_test, y_test)
-print(score)
+print("-- Accuracy:     ", score*100, '%')
 for h in range(len(y_predict)):
     print(y_predict[h], y_test[h])
+
 
 # --------------------  SAVING THE TRAINED MODEL
 # The trained model is saved in a 'joblib file,
 # and it will be later loaded in another code,
 
+### Trained model already saved as CSV file (100%)
+'''
 ml_filename = 'ML_model_samples'
 trained_model = joblib.dump(model, ml_filename + ".joblib", compress=0)
 '''
-
-
-
 
 # --------------------------------------- TO LOAD MODEL
 # ------- ~~ For another script ~~
